@@ -68,8 +68,8 @@ fn main() {
                         }
                     }
                     _ => {
-                        if let Some(path) = find_excutable(cmd) {
-                            let stdout = run_executable(&path, &args[1..]);
+                        if let Some(_) = find_excutable(cmd) {
+                            let stdout = run_executable(args[0], &args[1..]);
                             println!("{stdout}");
                         } else {
                             eprintln!("Command not found");
