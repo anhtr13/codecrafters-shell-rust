@@ -16,11 +16,17 @@ fn main() {
                 exit(1);
             }
             Ok(_) => {
-                let cmd = buffer.trim();
+                let input = buffer.trim();
+                let args: Vec<&str> = input.split_whitespace().collect();
+                let cmd = args[0];
 
                 match cmd {
                     "exit" => {
                         break;
+                    }
+                    "echo" => {
+                        let output = args[1..].join(" ");
+                        println!("{output}");
                     }
                     _ => {
                         eprintln!("{cmd}: command not found");
