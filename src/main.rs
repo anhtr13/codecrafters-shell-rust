@@ -1,4 +1,5 @@
 use std::{
+    env::current_dir,
     fs::metadata,
     io::{self, Write},
     os::unix::fs::PermissionsExt,
@@ -6,7 +7,27 @@ use std::{
     process::{Command, exit},
 };
 
-const BUILTIN: &[&str] = &["exit", "echo", "type"];
+const BUILTIN: &[&str] = &["exit", "echo", "type", "pwd"];
+
+fn run_echo(args: &[&str]) {
+    let output = args.join(" ");
+    println!("{output}");
+}
+
+fn run_type(args: &[&str]) {
+    if BUILTIN.contains(&args[0]) {
+        println!("{} is a shell builtin", args[0]);
+    } else if let Some(path) = find_excutable(args[0]) {
+        println!("{} is {path}", args[0])
+    } else {
+        println!("{}: not found", args[0]);
+    }
+}
+
+fn run_pwd() {
+    let path = current_dir().expect("Cannot get current directory.");
+    println!("{}", path.display());
+}
 
 fn find_excutable(name: &str) -> Option<String> {
     let path = std::env::var("PATH").expect("cannot get PATH");
@@ -55,17 +76,13 @@ fn main() {
                         break;
                     }
                     "echo" => {
-                        let output = args[1..].join(" ");
-                        println!("{output}");
+                        run_echo(&args[1..]);
                     }
                     "type" => {
-                        if BUILTIN.contains(&args[1]) {
-                            println!("{} is a shell builtin", args[1]);
-                        } else if let Some(path) = find_excutable(args[1]) {
-                            println!("{} is {path}", args[1])
-                        } else {
-                            println!("{}: not found", args[1]);
-                        }
+                        run_type(&args[1..]);
+                    }
+                    "pwd" => {
+                        run_pwd();
                     }
                     _ => {
                         if let Some(_) = find_excutable(cmd) {
