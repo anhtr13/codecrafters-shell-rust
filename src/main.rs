@@ -28,6 +28,20 @@ fn main() {
                         let output = args[1..].join(" ");
                         println!("{output}");
                     }
+                    "type" => {
+                        if args.len() <= 1 {
+                            eprintln!(": not found");
+                            continue;
+                        }
+                        match args[1] {
+                            "echo" | "exit" => {
+                                println!("{} is a shell builtin", args[1]);
+                            }
+                            _ => {
+                                println!("{}: not found", args[1]);
+                            }
+                        }
+                    }
                     _ => {
                         eprintln!("{cmd}: command not found");
                     }
