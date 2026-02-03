@@ -6,6 +6,8 @@ fn main() {
 
     let mut cmd = String::new();
     io::stdin().read_line(&mut cmd).unwrap();
+    let cmd = cmd.trim();
+
     if cmd != "" {
         eprintln!("{cmd}: command not found");
         return;
