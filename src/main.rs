@@ -18,7 +18,14 @@ fn main() {
             Ok(_) => {
                 let cmd = buffer.trim();
 
-                eprintln!("{cmd}: command not found");
+                match cmd {
+                    "exit" => {
+                        break;
+                    }
+                    _ => {
+                        eprintln!("{cmd}: command not found");
+                    }
+                }
 
                 print!("$ ");
                 io::stdout().flush().unwrap();
