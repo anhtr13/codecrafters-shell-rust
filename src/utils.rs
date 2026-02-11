@@ -12,7 +12,7 @@ pub fn parse_input(input: &str) -> Option<(&str, Vec<String>)> {
         }
         return Some((cmd, vec![]));
     }
-    None
+    Some((input, vec![]))
 }
 
 pub fn find_excutable(name: &str) -> Option<String> {
