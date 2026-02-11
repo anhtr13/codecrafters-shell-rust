@@ -5,14 +5,12 @@ use std::{
     process::{Command, ExitStatus},
 };
 
-pub fn parse_input(input: &str) -> Option<(&str, Vec<String>)> {
-    if let Some((cmd, args)) = input.split_once(char::is_whitespace) {
-        if let Some(args) = shlex::split(args.trim()) {
-            return Some((cmd, args));
-        }
-        return Some((cmd, vec![]));
+pub fn parse_input(input: &str) -> Option<(String, Vec<String>)> {
+    if let Some(mut cmd) = shlex::split(input) {
+        let args = cmd.split_off(1);
+        return Some((cmd.remove(0), args));
     }
-    Some((input, vec![]))
+    None
 }
 
 pub fn find_excutable(name: &str) -> Option<String> {

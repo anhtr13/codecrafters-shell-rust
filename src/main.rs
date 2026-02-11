@@ -22,7 +22,7 @@ fn main() {
                 let input = buffer.trim();
                 let (cmd, args) = utils::parse_input(input).unwrap();
 
-                match cmd {
+                match cmd.as_str() {
                     "exit" => {
                         break;
                     }
@@ -39,8 +39,8 @@ fn main() {
                         builtin::run_cd(&args);
                     }
                     _ => {
-                        if utils::find_excutable(cmd).is_some() {
-                            let _ = utils::run_executable(cmd, &args);
+                        if utils::find_excutable(&cmd).is_some() {
+                            let _ = utils::run_executable(&cmd, &args);
                         } else {
                             eprintln!("{}: command not found", cmd);
                         }
