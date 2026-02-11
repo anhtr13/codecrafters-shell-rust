@@ -4,20 +4,42 @@ use std::{
     io::{self, Write},
     os::unix::fs::PermissionsExt,
     path::Path,
-    process::{Command, exit},
+    process::{Command, ExitStatus, exit},
+    str::FromStr,
 };
 
-const BUILTIN: &[&str] = &["exit", "echo", "type", "pwd", "cd"];
+#[derive(Debug)]
+pub enum Builtin {
+    Exit,
+    Echo,
+    Type,
+    Pwd,
+    Cd,
+}
 
-fn run_echo(args: &[&str]) {
+impl FromStr for Builtin {
+    type Err = &'static str;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "exit" => Ok(Self::Exit),
+            "echo" => Ok(Self::Echo),
+            "type" => Ok(Self::Type),
+            "pwd" => Ok(Self::Pwd),
+            "cd" => Ok(Self::Cd),
+            _ => Err("Not a builtin command"),
+        }
+    }
+}
+
+fn run_echo(args: &Vec<String>) {
     let output = args.join(" ");
     println!("{output}");
 }
 
-fn run_type(args: &[&str]) {
-    if BUILTIN.contains(&args[0]) {
+fn run_type(args: &Vec<String>) {
+    if Builtin::from_str(&args[0]).is_ok() {
         println!("{} is a shell builtin", args[0]);
-    } else if let Some(path) = find_excutable(args[0]) {
+    } else if let Some(path) = find_excutable(&args[0]) {
         println!("{} is {path}", args[0])
     } else {
         println!("{}: not found", args[0]);
@@ -29,7 +51,7 @@ fn run_pwd() {
     println!("{}", path.display());
 }
 
-fn run_cd(args: &[&str]) {
+fn run_cd(args: &Vec<String>) {
     let path_string = if args.is_empty() {
         let home = home_dir().expect("Impossible to get home dir");
         home.display().to_string()
@@ -51,6 +73,15 @@ fn run_cd(args: &[&str]) {
     }
 }
 
+fn parse_input(input: &str) -> Option<(&str, Vec<String>)> {
+    if let Some((cmd, args)) = input.split_once(char::is_whitespace)
+        && let Some(args) = shlex::split(args.trim())
+    {
+        return Some((cmd, args));
+    }
+    None
+}
+
 fn find_excutable(name: &str) -> Option<String> {
     let path = std::env::var("PATH").expect("cannot get PATH");
     let bins: Vec<&str> = path.split(':').collect();
@@ -67,13 +98,8 @@ fn find_excutable(name: &str) -> Option<String> {
     None
 }
 
-fn run_executable(path: &str, args: &[&str]) -> String {
-    let output = Command::new(path)
-        .args(args)
-        .output()
-        .expect("Failed to execute command");
-    let stdout = str::from_utf8(&output.stdout).expect("Invalid UTF-8");
-    stdout.to_string()
+fn run_executable(path: &str, args: &Vec<String>) -> io::Result<ExitStatus> {
+    Command::new(path).args(args).status()
 }
 
 fn main() {
@@ -90,29 +116,27 @@ fn main() {
             }
             Ok(_) => {
                 let input = buffer.trim();
-                let args: Vec<&str> = input.split_whitespace().collect();
-                let cmd = args[0];
+                let (cmd, args) = parse_input(input).unwrap();
 
                 match cmd {
                     "exit" => {
                         break;
                     }
                     "echo" => {
-                        run_echo(&args[1..]);
+                        run_echo(&args);
                     }
                     "type" => {
-                        run_type(&args[1..]);
+                        run_type(&args);
                     }
                     "pwd" => {
                         run_pwd();
                     }
                     "cd" => {
-                        run_cd(&args[1..]);
+                        run_cd(&args);
                     }
                     _ => {
-                        if find_excutable(cmd).is_some() {
-                            let stdout = run_executable(args[0], &args[1..]);
-                            print!("{stdout}");
+                        if find_excutable(&cmd).is_some() {
+                            let _ = run_executable(cmd, &args);
                         } else {
                             eprintln!("{}: command not found", cmd);
                         }
