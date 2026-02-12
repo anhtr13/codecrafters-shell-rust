@@ -1,4 +1,6 @@
 use std::{
+    error::Error,
+    fmt::Display,
     fs::File,
     io::{self, Write},
     process::exit,
@@ -9,6 +11,16 @@ use crate::builtin::Builtin;
 
 mod builtin;
 mod utils;
+
+#[derive(Debug)]
+struct AppError(String);
+
+impl Display for AppError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+impl Error for AppError {}
 
 fn main() {
     print!("$ ");
@@ -59,7 +71,7 @@ fn main() {
                                     eprintln!("{e}");
                                 }
                             }
-                        } else {
+                        } else if !std_out.is_empty() {
                             println!("{std_out}");
                         }
                     }

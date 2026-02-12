@@ -1,5 +1,7 @@
 use std::{error::Error, fs::metadata, os::unix::fs::PermissionsExt, path::Path, process::Command};
 
+use crate::AppError;
+
 pub fn parse_input(input: &str) -> Option<(String, Vec<String>)> {
     if let Some(mut cmd) = shlex::split(input) {
         let args = cmd.split_off(1);
@@ -26,11 +28,17 @@ pub fn find_excutable(name: &str) -> Option<String> {
 
 pub fn run_executable(path: &str, args: &Vec<String>) -> Result<String, Box<dyn Error>> {
     let output = Command::new(path).args(args).output()?;
-    let mut data = if output.status.success() {
-        output.stdout
-    } else {
-        output.stderr
-    };
+    if !output.status.success() {
+        let mut data = output.stderr;
+        if let Some(c) = data.last()
+            && *c == b'\n'
+        {
+            data.pop();
+        }
+        let s = String::from_utf8(data)?;
+        return Err(Box::new(AppError(s)));
+    }
+    let mut data = output.stdout;
     if let Some(c) = data.last()
         && *c == b'\n'
     {

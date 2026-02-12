@@ -73,8 +73,6 @@ pub fn run_cd(args: &[String]) -> Result<String, Box<dyn Error>> {
         input
     };
     let path = Path::new(&path_string);
-    match set_current_dir(path) {
-        Ok(_) => Ok("".to_string()),
-        Err(_) => Err(format!("{}: No such file or directory", &path_string).into()),
-    }
+    let _ = set_current_dir(path)?;
+    Ok("".to_string())
 }
