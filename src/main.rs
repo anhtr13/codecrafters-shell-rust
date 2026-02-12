@@ -54,7 +54,11 @@ fn main() {
                     utils::run_executable(&cmd, &args)
                 } else {
                     eprintln!("{}: command not found", cmd);
-                    continue;
+                    CmdOutput {
+                        status: 0,
+                        std_out: "".to_string(),
+                        std_err: "".to_string(),
+                    }
                 };
 
                 if !output.std_out.is_empty() {
