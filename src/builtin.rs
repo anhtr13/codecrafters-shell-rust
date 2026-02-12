@@ -96,7 +96,7 @@ pub fn run_cd(args: &[String]) -> CmdOutput {
     let path_string = if args.is_empty() {
         home
     } else if args[0].as_bytes().first() == Some(&b'~') {
-        format!("{}{}", home, args[0][1..].to_string())
+        format!("{}{}", home, &args[0][1..].to_string())
     } else {
         args[0].to_string()
     };
@@ -106,10 +106,10 @@ pub fn run_cd(args: &[String]) -> CmdOutput {
             std_out: "".to_string(),
             std_err: "".to_string(),
         },
-        Err(e) => CmdOutput {
+        Err(_) => CmdOutput {
             status: 1,
             std_out: "".to_string(),
-            std_err: e.to_string(),
+            std_err: format!("cd: {}: No such file or directory", path_string),
         },
     }
 }
