@@ -1,5 +1,6 @@
 use std::{
     env::{current_dir, home_dir, set_current_dir},
+    error::Error,
     fmt::Display,
     path::Path,
     str::FromStr,
@@ -40,26 +41,26 @@ impl FromStr for Builtin {
     }
 }
 
-pub fn run_echo(args: &[String]) -> Option<String> {
-    Some(args.join(" "))
+pub fn run_echo(args: &[String]) -> Result<String, Box<dyn Error>> {
+    Ok(args.join(" "))
 }
 
-pub fn run_type(args: &[String]) -> Option<String> {
+pub fn run_type(args: &[String]) -> Result<String, Box<dyn Error>> {
     if Builtin::from_str(&args[0]).is_ok() {
-        Some(format!("{} is a shell builtin", args[0]))
+        Ok(format!("{} is a shell builtin", args[0]))
     } else if let Some(path) = crate::utils::find_excutable(&args[0]) {
-        Some(format!("{} is {path}", args[0]))
+        Ok(format!("{} is {path}", args[0]))
     } else {
-        Some(format!("{}: not found", args[0]))
+        Ok(format!("{}: not found", args[0]))
     }
 }
 
-pub fn run_pwd() -> Option<String> {
-    let path = current_dir().expect("Cannot get current directory.");
-    Some(format!("{}", path.display()))
+pub fn run_pwd() -> Result<String, Box<dyn Error>> {
+    let path = current_dir()?;
+    Ok(format!("{}", path.display()))
 }
 
-pub fn run_cd(args: &[String]) -> Option<String> {
+pub fn run_cd(args: &[String]) -> Result<String, Box<dyn Error>> {
     let path_string = if args.is_empty() {
         let home = home_dir().expect("Impossible to get home dir");
         home.display().to_string()
@@ -73,7 +74,7 @@ pub fn run_cd(args: &[String]) -> Option<String> {
     };
     let path = Path::new(&path_string);
     match set_current_dir(path) {
-        Ok(_) => None,
-        Err(_) => Some(format!("{}: No such file or directory", &path_string)),
+        Ok(_) => Ok("".to_string()),
+        Err(_) => Err(format!("{}: No such file or directory", &path_string).into()),
     }
 }

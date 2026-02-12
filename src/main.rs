@@ -46,19 +46,25 @@ fn main() {
                 } else if utils::find_excutable(&cmd).is_some() {
                     utils::run_executable(&cmd, &args)
                 } else {
-                    Some(format!("{}: command not found", cmd))
+                    eprintln!("{}: command not found", cmd);
+                    continue;
                 };
 
-                if let Some(std_out) = output {
-                    if let Some(mut file) = file {
-                        match file.write_all(std_out.as_bytes()) {
-                            Ok(_) => {}
-                            Err(e) => {
-                                eprintln!("{e}");
+                match output {
+                    Ok(std_out) => {
+                        if let Some(mut file) = file {
+                            match file.write_all(std_out.as_bytes()) {
+                                Ok(_) => {}
+                                Err(e) => {
+                                    eprintln!("{e}");
+                                }
                             }
+                        } else {
+                            println!("{std_out}");
                         }
-                    } else {
-                        println!("{std_out}");
+                    }
+                    Err(e) => {
+                        eprintln!("{e}");
                     }
                 }
 
