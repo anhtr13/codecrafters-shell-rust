@@ -1,6 +1,4 @@
 use std::{
-    error::Error,
-    fmt::Display,
     fs::File,
     io::{self, Write},
     process::exit,
@@ -13,14 +11,11 @@ mod builtin;
 mod utils;
 
 #[derive(Debug)]
-struct AppError(String);
-
-impl Display for AppError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
+struct CmdOutput {
+    status: u8,
+    std_out: String,
+    std_err: String,
 }
-impl Error for AppError {}
 
 fn main() {
     print!("$ ");
@@ -62,22 +57,17 @@ fn main() {
                     continue;
                 };
 
-                match output {
-                    Ok(std_out) => {
-                        if let Some(mut file) = file {
-                            match file.write_all(std_out.as_bytes()) {
-                                Ok(_) => {}
-                                Err(e) => {
-                                    eprintln!("{e}");
-                                }
-                            }
-                        } else if !std_out.is_empty() {
-                            println!("{std_out}");
-                        }
+                if !output.std_out.is_empty() {
+                    if let Some(mut file) = file {
+                        file.write_all(output.std_out.as_bytes())
+                            .unwrap_or_else(|e| eprintln!("{e}"));
+                    } else {
+                        println!("{}", output.std_out);
                     }
-                    Err(e) => {
-                        eprintln!("{e}");
-                    }
+                }
+
+                if output.status > 0 {
+                    eprintln!("{}", output.std_err);
                 }
 
                 buffer.clear();
