@@ -27,11 +27,16 @@ pub fn find_excutable(name: &str) -> Option<String> {
 pub fn run_executable(path: &str, args: &Vec<String>) -> Option<String> {
     match Command::new(path).args(args).output() {
         Ok(output) => {
-            let data = if output.status.success() {
+            let mut data = if output.status.success() {
                 output.stdout
             } else {
                 output.stderr
             };
+            if let Some(c) = data.last()
+                && *c == b'\n'
+            {
+                data.pop();
+            }
             Some(String::from_utf8(data).unwrap())
         }
         Err(_) => None,
