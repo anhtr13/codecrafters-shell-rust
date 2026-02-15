@@ -25,7 +25,7 @@ impl Completer for ShellHelper {
             match prefix {
                 "ech" => return Ok((0, vec![String::from("echo ")])),
                 "exi" => return Ok((0, vec![String::from("exit ")])),
-                _ => {}
+                _ => return Ok((0, vec![format!("{}\x07", line)])),
             }
         }
         Ok((0, vec![String::from(line)]))
