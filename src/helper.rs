@@ -35,7 +35,8 @@ impl Completer for InputHelper {
                                     if let Some(name) = entry.file_name().to_str()
                                         && name.starts_with(pre)
                                     {
-                                        return Ok((0, vec![name.to_string()]));
+                                        let name = format!("{name} ");
+                                        return Ok((0, vec![name]));
                                     }
                                 }
                             }
