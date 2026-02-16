@@ -242,6 +242,7 @@ impl Shell {
                     }
                 }
             }
+            return Err(format!("{name}: command not found"));
         };
         Err("Cannot get PATH".to_string())
     }
