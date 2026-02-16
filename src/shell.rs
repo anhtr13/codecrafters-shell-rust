@@ -235,11 +235,12 @@ impl Shell {
             for dir in std::env::split_paths(&path) {
                 let p = format!("{}/{name}", dir.display());
                 let path = Path::new(&p);
-                if path.is_file() {
-                    let mode = metadata(path).unwrap().permissions().mode();
-                    if mode & 0o100 != 0 || mode & 0o010 != 0 || mode & 0o001 != 0 {
-                        return Ok(p);
-                    }
+                if path.is_file()
+                    && let Ok(metadata) = metadata(path)
+                    && let mode = metadata.permissions().mode()
+                    && (mode & 0o100 != 0 || mode & 0o010 != 0 || mode & 0o001 != 0)
+                {
+                    return Ok(p);
                 }
             }
             return Err(format!("{name}: command not found"));
@@ -257,14 +258,14 @@ impl Shell {
                     {
                         std_err.pop();
                     }
-                    let std_err = String::from_utf8(std_err).unwrap();
+                    let std_err = String::from_utf8(std_err).unwrap_or_default();
                     let mut std_out = output.stdout;
                     if let Some(c) = std_out.last()
                         && *c == b'\n'
                     {
                         std_out.pop();
                     }
-                    let std_out = String::from_utf8(std_out).unwrap();
+                    let std_out = String::from_utf8(std_out).unwrap_or_default();
                     let status = if std_err.is_empty() { 0 } else { 1 };
                     Output {
                         _status: status,

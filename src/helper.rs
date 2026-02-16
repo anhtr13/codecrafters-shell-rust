@@ -1,4 +1,8 @@
-use std::fs::read_dir;
+use std::{
+    collections::HashSet,
+    fs::{metadata, read_dir},
+    os::unix::fs::PermissionsExt,
+};
 
 use rustyline::{
     Helper, completion::Completer, highlight::Highlighter, hint::Hinter, validate::Validator,
@@ -9,6 +13,31 @@ pub struct InputHelper;
 impl InputHelper {
     pub fn default() -> Self {
         InputHelper
+    }
+
+    fn get_candidate(word: &str) -> Vec<String> {
+        let mut res = HashSet::new();
+        if let Some(path) = std::env::var_os("PATH") {
+            std::env::split_paths(&path)
+                .map(|dir| read_dir(&dir))
+                .filter_map(std::io::Result::ok)
+                .for_each(|dir| {
+                    dir.filter_map(std::io::Result::ok).for_each(|entry| {
+                        let entry_path = entry.path();
+                        if entry_path.is_file()
+                            && let Some(name) = entry.file_name().to_str()
+                            && !res.contains(name)
+                            && let Ok(metadata) = metadata(&entry_path)
+                            && let mode = metadata.permissions().mode()
+                            && (mode & 0o100 != 0 || mode & 0o010 != 0 || mode & 0o001 != 0)
+                            && name.starts_with(word)
+                        {
+                            res.insert(name.to_string());
+                        }
+                    });
+                });
+        }
+        res.into_iter().collect()
     }
 }
 
@@ -27,22 +56,10 @@ impl Completer for InputHelper {
             match prefix {
                 "ech" => return Ok((0, vec![String::from("echo ")])),
                 "exi" => return Ok((0, vec![String::from("exit ")])),
-                pre => {
-                    if let Some(path) = std::env::var_os("PATH") {
-                        for dir in std::env::split_paths(&path) {
-                            if let Ok(read_dir) = read_dir(&dir) {
-                                for entry in read_dir.filter_map(std::io::Result::ok) {
-                                    if let Some(name) = entry.file_name().to_str()
-                                        && name.starts_with(pre)
-                                    {
-                                        let name = format!("{name} ");
-                                        return Ok((0, vec![name]));
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    return Ok((0, vec![format!("{}\x07", line)]));
+                word => {
+                    let mut candidates = Self::get_candidate(word);
+                    candidates.sort_unstable();
+                    return Ok((0, candidates));
                 }
             }
         }

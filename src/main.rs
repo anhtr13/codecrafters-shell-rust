@@ -10,6 +10,7 @@ use crate::{helper::InputHelper, shell::Shell};
 fn main() -> Result<()> {
     let config = Config::builder()
         .bell_style(rustyline::config::BellStyle::Audible)
+        .completion_type(rustyline::CompletionType::List)
         .build();
     let helper = InputHelper::default();
     let mut rl = Editor::<InputHelper, DefaultHistory>::with_config(config)?;
