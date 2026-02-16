@@ -58,7 +58,11 @@ impl Completer for InputHelper {
                 "exi" => return Ok((0, vec![String::from("exit ")])),
                 word => {
                     let mut candidates = Self::get_candidate(word);
-                    candidates.sort_unstable();
+                    if candidates.len() == 1 {
+                        candidates[0].push(' ');
+                    } else {
+                        candidates.sort_unstable();
+                    }
                     return Ok((0, candidates));
                 }
             }
