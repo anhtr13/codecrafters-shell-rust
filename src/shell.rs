@@ -248,7 +248,7 @@ impl Shell {
 
     fn run_executable(&self) -> Output {
         match Self::check_excutable(&self.cmd) {
-            Ok(path) => match Command::new(path).args(&self.args).output() {
+            Ok(_) => match Command::new(&self.cmd).args(&self.args).output() {
                 Ok(output) => {
                     let mut std_err = output.stderr;
                     if let Some(c) = std_err.last()
