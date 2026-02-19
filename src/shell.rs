@@ -157,10 +157,8 @@ impl Builtin {
 pub struct Cmd {
     pub name: String,
     pub args: Vec<String>,
-    pub stdout_overwrite: Vec<File>,
-    pub stderr_overwrite: Vec<File>,
-    pub stdout_appends: Vec<File>,
-    pub stderr_appends: Vec<File>,
+    pub stdout_files: Vec<File>,
+    pub stderr_files: Vec<File>,
 }
 
 impl Cmd {
@@ -192,10 +190,8 @@ pub fn parse_input(input: &str) -> io::Result<Vec<Cmd>> {
         let mut flag: u8 = 0;
         let mut cmd_name = "".to_string();
         let mut cmd_args = Vec::new();
-        let mut stdout_overwrite = Vec::new();
-        let mut stderr_overwrite = Vec::new();
-        let mut stdout_appends = Vec::new();
-        let mut stderr_appends = Vec::new();
+        let mut stdout_files = Vec::new();
+        let mut stderr_files = Vec::new();
         for arg in input {
             if flag == 0 {
                 match arg.as_str() {
@@ -210,17 +206,13 @@ pub fn parse_input(input: &str) -> io::Result<Vec<Cmd>> {
                         cmds.push(Cmd {
                             name: cmd_name,
                             args: cmd_args,
-                            stdout_overwrite,
-                            stderr_overwrite,
-                            stdout_appends,
-                            stderr_appends,
+                            stdout_files,
+                            stderr_files,
                         });
                         cmd_name = "".to_string();
                         cmd_args = Vec::new();
-                        stdout_overwrite = Vec::new();
-                        stderr_overwrite = Vec::new();
-                        stdout_appends = Vec::new();
-                        stderr_appends = Vec::new();
+                        stdout_files = Vec::new();
+                        stderr_files = Vec::new();
                     }
                     _ => {
                         if cmd_name.is_empty() {
@@ -241,7 +233,7 @@ pub fn parse_input(input: &str) -> io::Result<Vec<Cmd>> {
                             .write(true)
                             .truncate(true)
                             .open(&arg)?;
-                        stdout_overwrite.push(f);
+                        stdout_files.push(f);
                         flag = 0;
                     }
                 }
@@ -256,7 +248,7 @@ pub fn parse_input(input: &str) -> io::Result<Vec<Cmd>> {
                             .write(true)
                             .truncate(true)
                             .open(&arg)?;
-                        stderr_overwrite.push(f);
+                        stderr_files.push(f);
                         flag = 0;
                     }
                 }
@@ -267,7 +259,7 @@ pub fn parse_input(input: &str) -> io::Result<Vec<Cmd>> {
                     }
                     _ => {
                         let f = OpenOptions::new().create(true).append(true).open(&arg)?;
-                        stdout_appends.push(f);
+                        stdout_files.push(f);
                         flag = 0;
                     }
                 }
@@ -278,7 +270,7 @@ pub fn parse_input(input: &str) -> io::Result<Vec<Cmd>> {
                     }
                     _ => {
                         let f = OpenOptions::new().create(true).append(true).open(&arg)?;
-                        stderr_appends.push(f);
+                        stderr_files.push(f);
                         flag = 0;
                     }
                 }
@@ -290,10 +282,8 @@ pub fn parse_input(input: &str) -> io::Result<Vec<Cmd>> {
             cmds.push(Cmd {
                 name: cmd_name,
                 args: cmd_args,
-                stdout_overwrite,
-                stderr_overwrite,
-                stdout_appends,
-                stderr_appends,
+                stdout_files,
+                stderr_files,
             });
         }
         return Ok(cmds);

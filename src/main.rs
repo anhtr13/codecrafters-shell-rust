@@ -29,34 +29,20 @@ fn main() -> Result<()> {
                     if let Ok(builtin) = Builtin::from_str(&cmd.name) {
                         let output = builtin.run(&cmd.args);
                         if !output.std_out.is_empty() {
-                            if idx + 1 == count_cmds
-                                && cmd.stdout_overwrite.is_empty()
-                                && cmd.stdout_appends.is_empty()
-                            {
+                            if idx + 1 == count_cmds && cmd.stdout_files.is_empty() {
                                 println!("{}", output.std_out);
                             } else {
-                                cmd.stdout_overwrite.into_iter().for_each(|mut file| {
-                                    writeln!(&mut file, "{}", output.std_out)
-                                        .unwrap_or_else(|e| eprintln!("{e}"));
-                                });
-                                cmd.stdout_appends.into_iter().for_each(|mut file| {
+                                cmd.stdout_files.into_iter().for_each(|mut file| {
                                     writeln!(&mut file, "{}", output.std_out)
                                         .unwrap_or_else(|e| eprintln!("{e}"));
                                 });
                             }
                         }
                         if !output.std_err.is_empty() {
-                            if idx + 1 == count_cmds
-                                && cmd.stderr_overwrite.is_empty()
-                                && cmd.stderr_appends.is_empty()
-                            {
+                            if idx + 1 == count_cmds && cmd.stderr_files.is_empty() {
                                 println!("{}", output.std_err);
                             } else {
-                                cmd.stderr_overwrite.into_iter().for_each(|mut file| {
-                                    writeln!(&mut file, "{}", output.std_err)
-                                        .unwrap_or_else(|e| eprintln!("{e}"));
-                                });
-                                cmd.stderr_appends.into_iter().for_each(|mut file| {
+                                cmd.stderr_files.into_iter().for_each(|mut file| {
                                     writeln!(&mut file, "{}", output.std_err)
                                         .unwrap_or_else(|e| eprintln!("{e}"));
                                 });
