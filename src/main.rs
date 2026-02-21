@@ -7,7 +7,7 @@ use rustyline::{Config, Editor, Result, history::DefaultHistory};
 
 use crate::{
     helper::InputHelper,
-    shell::{Builtin, parse_input},
+    shell::{Builtin, check_excutable, parse_input},
 };
 
 fn main() -> Result<()> {
@@ -49,6 +49,10 @@ fn main() -> Result<()> {
                             }
                         }
                     } else {
+                        if let Err(e) = check_excutable(&cmd.name) {
+                            eprintln!("{e}");
+                            break;
+                        }
                         match cmd.run(prev_child_stdout, idx + 1 == count_cmds) {
                             Ok(mut child) => {
                                 // let ouput = child.wait_with_output().unwrap();

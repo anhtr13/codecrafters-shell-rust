@@ -51,7 +51,7 @@ impl FromStr for Builtin {
     }
 }
 
-fn check_excutable(name: &str) -> Result<String, String> {
+pub fn check_excutable(name: &str) -> Result<String, String> {
     if let Some(path) = std::env::var_os("PATH") {
         for dir in std::env::split_paths(&path) {
             let p = format!("{}/{name}", dir.display());
