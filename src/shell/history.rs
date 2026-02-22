@@ -3,18 +3,13 @@ use std::{
     io::{self, BufRead, BufReader, Write},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct History {
     pub commands: Vec<String>,
+    pub default_histfile: String,
 }
 
 impl History {
-    pub fn new() -> Self {
-        History {
-            commands: Vec::new(),
-        }
-    }
-
     pub fn add(&mut self, cmd: String) {
         self.commands.push(cmd);
     }

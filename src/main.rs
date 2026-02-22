@@ -10,7 +10,7 @@ use rustyline::{
 };
 use std::{env, str::FromStr};
 
-fn run(mut rl: Editor<InputHelper, FileHistory>, mut history: History) -> Result<()> {
+fn run(mut rl: Editor<InputHelper, FileHistory>, history: &mut History) -> Result<()> {
     loop {
         let input = rl.readline("$ ")?;
         match parse_input(&input) {
@@ -25,7 +25,7 @@ fn run(mut rl: Editor<InputHelper, FileHistory>, mut history: History) -> Result
                     let is_last = idx + 1 == total_cmds;
 
                     if let Ok(builtin) = Builtin::from_str(&cmd.name) {
-                        cmd_io = builtin.run(cmd, &mut history, is_last);
+                        cmd_io = builtin.run(cmd, history, is_last);
                     } else {
                         if let Err(e) = check_is_excutable(&cmd.name) {
                             eprintln!("{e}");
@@ -50,10 +50,16 @@ fn main() -> Result<()> {
     rl.set_helper(Some(helper));
     rl.set_auto_add_history(true);
 
-    let mut history = History::new();
+    let mut history = History::default();
     if let Ok(histfile) = env::var("HISTFILE") {
         history.append_from_file(&histfile)?;
+        history.default_histfile = histfile;
     };
 
-    run(rl, history)
+    let res = run(rl, &mut history);
+    if !history.default_histfile.is_empty() {
+        history.write_to_file(&history.default_histfile)?;
+    }
+
+    res
 }
