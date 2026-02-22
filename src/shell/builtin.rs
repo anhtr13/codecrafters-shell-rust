@@ -128,7 +128,11 @@ impl Builtin {
     }
 
     fn run_history(args: &[String], history: &mut Vec<String>) -> BuiltinOutput {
-        let limit: usize = args[0].parse().unwrap_or(usize::MAX);
+        let limit: usize = if args.is_empty() {
+            history.len()
+        } else {
+            args[0].parse().unwrap_or(history.len())
+        };
         let skip = if limit >= history.len() {
             0
         } else {
