@@ -126,32 +126,73 @@ impl Builtin {
 
     fn run_history(args: &[String], history: &mut Vec<String>) -> BuiltinOutput {
         let mut skip = 0;
-        if args.len() >= 1 {
+        if !args.is_empty() {
             if let Ok(limit) = args[0].parse::<usize>() {
                 skip = history.len() - limit.min(history.len());
             } else if args.len() >= 2 {
                 if args[0] == "-r" {
-                    let file = OpenOptions::new()
-                        .read(true)
-                        .open(&args[1])
-                        .expect("Cannot open history file");
-                    let reader = BufReader::new(file);
-                    reader.lines().filter_map(Result::ok).for_each(|line| {
-                        if !line.is_empty() {
-                            history.push(line);
+                    match OpenOptions::new().read(true).open(&args[1]) {
+                        Ok(file) => {
+                            let reader = BufReader::new(file);
+                            reader.lines().map_while(Result::ok).for_each(|line| {
+                                if !line.is_empty() {
+                                    history.push(line);
+                                }
+                            });
+                            return BuiltinOutput::default();
                         }
-                    });
-                    return BuiltinOutput::default();
+                        Err(e) => {
+                            return BuiltinOutput {
+                                _status: 1,
+                                std_out: "".to_string(),
+                                std_err: e.to_string(),
+                            };
+                        }
+                    }
                 } else if args[0] == "-w" {
-                    let mut file = OpenOptions::new()
+                    match OpenOptions::new()
                         .create(true)
                         .write(true)
+                        .truncate(true)
                         .open(&args[1])
-                        .expect("Cannot open history file");
-                    for line in history.iter() {
-                        writeln!(file, "{}", line).expect("Cannot write to history");
+                    {
+                        Ok(mut file) => {
+                            history.iter().for_each(|line| {
+                                writeln!(file, "{}", line).expect("Cannot write to file");
+                            });
+                            return BuiltinOutput::default();
+                        }
+                        Err(e) => {
+                            return BuiltinOutput {
+                                _status: 1,
+                                std_out: "".to_string(),
+                                std_err: e.to_string(),
+                            };
+                        }
                     }
-                    return BuiltinOutput::default();
+                } else if args[0] == "-a" {
+                    match OpenOptions::new().create(true).append(true).open(&args[1]) {
+                        Ok(mut file) => {
+                            let mut idx = 0;
+                            for i in (0..history.len() - 1).rev() {
+                                if history[i].starts_with("history -a") {
+                                    idx = i + 1;
+                                    break;
+                                }
+                            }
+                            history.iter().skip(idx).for_each(|cmd| {
+                                writeln!(file, "{}", cmd).expect("Cannot write to file");
+                            });
+                            return BuiltinOutput::default();
+                        }
+                        Err(e) => {
+                            return BuiltinOutput {
+                                _status: 1,
+                                std_out: "".to_string(),
+                                std_err: e.to_string(),
+                            };
+                        }
+                    }
                 }
             }
         }
@@ -193,7 +234,8 @@ impl Builtin {
                 writeln!(&mut file, "{}", output.std_out)
                     .unwrap_or_else(|e| eprintln!("Error: {e}"));
             } else if !is_last {
-                let (stdout_reader, mut stdout_writer) = io::pipe().expect("Cannot create pipe");
+                let (stdout_reader, mut stdout_writer) =
+                    io::pipe().expect("Cannot create command pipeline");
                 pipeout = Some(stdout_reader);
                 writeln!(stdout_writer, "{}", output.std_out)
                     .unwrap_or_else(|e| eprintln!("Error: {e}"))

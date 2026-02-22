@@ -13,11 +13,7 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn run(
-        self,
-        stdin: Option<PipeReader>,
-        is_last: bool,
-    ) -> Option<PipeReader> {
+    pub fn run(self, stdin: Option<PipeReader>, is_last: bool) -> Option<PipeReader> {
         let stdin = if let Some(stdio) = stdin {
             Stdio::from(stdio)
         } else {
@@ -29,7 +25,8 @@ impl Cmd {
         let stdout = if let Some(stdout_file) = self.stdout_file {
             Stdio::from(stdout_file)
         } else if !is_last {
-            let (stdout_reader, stdout_writer) = io::pipe().expect("Cannot create pipe");
+            let (stdout_reader, stdout_writer) =
+                io::pipe().expect("Cannot create command pipeline");
             output = Some(stdout_reader);
             Stdio::from(stdout_writer)
         } else {
