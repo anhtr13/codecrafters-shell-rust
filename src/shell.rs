@@ -1,57 +1,17 @@
+pub mod builtin;
+pub mod command;
+pub mod helper;
+
 use std::{
-    env::{current_dir, home_dir, set_current_dir},
-    fmt::Display,
-    fs::{File, OpenOptions, metadata},
+    fs::{OpenOptions, metadata},
     io::{self, Error},
     os::unix::fs::PermissionsExt,
     path::Path,
-    process::{self, Child, ChildStdout, Command, Stdio},
-    str::FromStr,
 };
 
-#[derive(Debug)]
-pub struct BuiltinOutput {
-    pub _status: u8,
-    pub std_out: String,
-    pub std_err: String,
-}
+use crate::shell::command::Cmd;
 
-#[derive(Debug)]
-pub enum Builtin {
-    Exit,
-    Echo,
-    Type,
-    Pwd,
-    Cd,
-}
-
-impl Display for Builtin {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Cd => write!(f, "cd"),
-            Self::Echo => write!(f, "exit"),
-            Self::Exit => write!(f, "exit"),
-            Self::Pwd => write!(f, "exit"),
-            Self::Type => write!(f, "exit"),
-        }
-    }
-}
-
-impl FromStr for Builtin {
-    type Err = &'static str;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "exit" => Ok(Self::Exit),
-            "echo" => Ok(Self::Echo),
-            "type" => Ok(Self::Type),
-            "pwd" => Ok(Self::Pwd),
-            "cd" => Ok(Self::Cd),
-            _ => Err("Not a builtin command"),
-        }
-    }
-}
-
-pub fn check_excutable(name: &str) -> Result<String, String> {
+pub fn check_is_excutable(name: &str) -> Result<String, String> {
     if let Some(path) = std::env::var_os("PATH") {
         for dir in std::env::split_paths(&path) {
             let p = format!("{}/{name}", dir.display());
@@ -69,141 +29,14 @@ pub fn check_excutable(name: &str) -> Result<String, String> {
     Err("Cannot get PATH".to_string())
 }
 
-impl Builtin {
-    fn run_echo(args: &[String]) -> BuiltinOutput {
-        BuiltinOutput {
-            _status: 0,
-            std_out: args.join(" "),
-            std_err: "".to_string(),
-        }
-    }
-
-    fn run_type(args: &[String]) -> BuiltinOutput {
-        let (status, std_out, std_err) = if Builtin::from_str(&args[0]).is_ok() {
-            (0, format!("{} is a shell builtin", args[0]), "".to_string())
-        } else if let Ok(path) = check_excutable(&args[0]) {
-            (0, format!("{} is {path}", args[0]), "".to_string())
-        } else {
-            (1, "".to_string(), format!("{}: not found", args[0]))
-        };
-        BuiltinOutput {
-            _status: status,
-            std_out,
-            std_err,
-        }
-    }
-
-    fn run_pwd() -> BuiltinOutput {
-        match current_dir() {
-            Ok(path) => BuiltinOutput {
-                _status: 0,
-                std_out: path.display().to_string(),
-                std_err: "".to_string(),
-            },
-            Err(e) => BuiltinOutput {
-                _status: 1,
-                std_out: "".to_string(),
-                std_err: e.to_string(),
-            },
-        }
-    }
-
-    fn run_cd(args: &[String]) -> BuiltinOutput {
-        let mut home = String::new();
-        if args.is_empty() || args[0].as_bytes().first() == Some(&b'~') {
-            if let Some(h) = home_dir() {
-                home = h.display().to_string();
-            } else {
-                return BuiltinOutput {
-                    _status: 1,
-                    std_out: "".to_string(),
-                    std_err: "Impossible to get home dir".to_string(),
-                };
-            }
-        }
-        let path_string = if args.is_empty() {
-            home
-        } else if args[0].as_bytes().first() == Some(&b'~') {
-            format!("{}{}", home, &args[0][1..].to_string())
-        } else {
-            args[0].to_string()
-        };
-        match set_current_dir(Path::new(&path_string)) {
-            Ok(_) => BuiltinOutput {
-                _status: 0,
-                std_out: "".to_string(),
-                std_err: "".to_string(),
-            },
-            Err(_) => BuiltinOutput {
-                _status: 1,
-                std_out: "".to_string(),
-                std_err: format!("cd: {}: No such file or directory", path_string),
-            },
-        }
-    }
-
-    pub fn run(&self, args: &[String]) -> BuiltinOutput {
-        match self {
-            Builtin::Cd => Builtin::run_cd(args),
-            Builtin::Echo => Builtin::run_echo(args),
-            Builtin::Exit => process::exit(0),
-            Builtin::Pwd => Builtin::run_pwd(),
-            Builtin::Type => Builtin::run_type(args),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct Cmd {
-    pub name: String,
-    pub args: Vec<String>,
-    pub stdout_files: Vec<File>,
-    pub stderr_files: Vec<File>,
-}
-
-impl Cmd {
-    pub fn run(mut self, prev_out: Option<ChildStdout>, is_last: bool) -> io::Result<Child> {
-        if is_last {
-            let stdout = if self.stdout_files.is_empty() {
-                Stdio::inherit()
-            } else {
-                Stdio::from(self.stdout_files.pop().unwrap())
-            };
-            let stderr = if self.stderr_files.is_empty() {
-                Stdio::inherit()
-            } else {
-                Stdio::from(self.stderr_files.pop().unwrap())
-            };
-            match prev_out {
-                Some(pipe) => Command::new(&self.name)
-                    .args(&self.args)
-                    .stdin(Stdio::from(pipe))
-                    .stdout(stdout)
-                    .stderr(stderr)
-                    .spawn(),
-                None => Command::new(&self.name)
-                    .args(&self.args)
-                    .stdout(stdout)
-                    .stderr(stderr)
-                    .spawn(),
-            }
-        } else {
-            Command::new(&self.name)
-                .args(&self.args)
-                .stdout(Stdio::piped())
-                .spawn()
-        }
-    }
-}
-
 pub fn parse_input(input: &str) -> io::Result<Vec<Cmd>> {
     if let Some(input) = shlex::split(input) {
-        let mut cmds = Vec::new();
+        let mut clis = Vec::new();
         let mut flag: u8 = 0;
-        let mut cmd_name = "".to_string();
-        let mut cmd_args = Vec::new();
-        let mut stdout_files = Vec::new();
-        let mut stderr_files = Vec::new();
+        let mut cmd = "".to_string();
+        let mut args = Vec::new();
+        let mut stdout_file = None;
+        let mut stderr_file = None;
         for arg in input {
             if flag == 0 {
                 match arg.as_str() {
@@ -212,25 +45,25 @@ pub fn parse_input(input: &str) -> io::Result<Vec<Cmd>> {
                     ">>" | "1>>" => flag = 3,
                     "2>>" => flag = 4,
                     "|" => {
-                        if cmd_name.is_empty() {
+                        if cmd.is_empty() {
                             return Err(Error::new(io::ErrorKind::InvalidInput, "parse error"));
                         }
-                        cmds.push(Cmd {
-                            name: cmd_name,
-                            args: cmd_args,
-                            stdout_files,
-                            stderr_files,
+                        clis.push(Cmd {
+                            name: cmd,
+                            args,
+                            stdout_file,
+                            stderr_file,
                         });
-                        cmd_name = "".to_string();
-                        cmd_args = Vec::new();
-                        stdout_files = Vec::new();
-                        stderr_files = Vec::new();
+                        cmd = "".to_string();
+                        args = Vec::new();
+                        stdout_file = None;
+                        stderr_file = None;
                     }
                     _ => {
-                        if cmd_name.is_empty() {
-                            cmd_name = arg;
+                        if cmd.is_empty() {
+                            cmd = arg;
                         } else {
-                            cmd_args.push(arg);
+                            args.push(arg);
                         }
                     }
                 }
@@ -245,7 +78,7 @@ pub fn parse_input(input: &str) -> io::Result<Vec<Cmd>> {
                             .write(true)
                             .truncate(true)
                             .open(&arg)?;
-                        stdout_files.push(f);
+                        stdout_file = Some(f);
                         flag = 0;
                     }
                 }
@@ -260,7 +93,7 @@ pub fn parse_input(input: &str) -> io::Result<Vec<Cmd>> {
                             .write(true)
                             .truncate(true)
                             .open(&arg)?;
-                        stderr_files.push(f);
+                        stderr_file = Some(f);
                         flag = 0;
                     }
                 }
@@ -271,7 +104,7 @@ pub fn parse_input(input: &str) -> io::Result<Vec<Cmd>> {
                     }
                     _ => {
                         let f = OpenOptions::new().create(true).append(true).open(&arg)?;
-                        stdout_files.push(f);
+                        stdout_file = Some(f);
                         flag = 0;
                     }
                 }
@@ -282,23 +115,23 @@ pub fn parse_input(input: &str) -> io::Result<Vec<Cmd>> {
                     }
                     _ => {
                         let f = OpenOptions::new().create(true).append(true).open(&arg)?;
-                        stderr_files.push(f);
+                        stderr_file = Some(f);
                         flag = 0;
                     }
                 }
             }
         }
-        if cmd_name.is_empty() {
+        if cmd.is_empty() {
             return Err(Error::new(io::ErrorKind::InvalidInput, "parse error"));
         } else {
-            cmds.push(Cmd {
-                name: cmd_name,
-                args: cmd_args,
-                stdout_files,
-                stderr_files,
+            clis.push(Cmd {
+                name: cmd,
+                args,
+                stdout_file,
+                stderr_file,
             });
         }
-        return Ok(cmds);
+        return Ok(clis);
     }
     Err(Error::new(io::ErrorKind::InvalidInput, "parse error"))
 }
