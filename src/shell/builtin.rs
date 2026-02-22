@@ -26,7 +26,7 @@ impl BuiltinOutput {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Builtin {
     Cd,
     Exit,

@@ -25,6 +25,9 @@ fn run(mut rl: Editor<InputHelper, FileHistory>, history: &mut History) -> Resul
                     let is_last = idx + 1 == total_cmds;
 
                     if let Ok(builtin) = Builtin::from_str(&cmd.name) {
+                        if builtin == Builtin::Exit {
+                            return Ok(());
+                        }
                         cmd_io = builtin.run(cmd, history, is_last);
                     } else {
                         if let Err(e) = check_is_excutable(&cmd.name) {
