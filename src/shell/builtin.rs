@@ -18,11 +18,12 @@ pub struct BuiltinOutput {
 
 #[derive(Debug)]
 pub enum Builtin {
+    Cd,
     Exit,
     Echo,
-    Type,
+    History,
     Pwd,
-    Cd,
+    Type,
 }
 
 impl Display for Builtin {
@@ -31,6 +32,7 @@ impl Display for Builtin {
             Self::Cd => write!(f, "cd"),
             Self::Echo => write!(f, "echo"),
             Self::Exit => write!(f, "exit"),
+            Self::History => write!(f, "history"),
             Self::Pwd => write!(f, "pwd"),
             Self::Type => write!(f, "type"),
         }
@@ -44,6 +46,7 @@ impl FromStr for Builtin {
             "cd" => Ok(Self::Cd),
             "echo" => Ok(Self::Echo),
             "exit" => Ok(Self::Exit),
+            "history" => Ok(Self::History),
             "pwd" => Ok(Self::Pwd),
             "type" => Ok(Self::Type),
             _ => Err("Not a builtin command"),
@@ -124,13 +127,22 @@ impl Builtin {
         }
     }
 
+    fn run_history() -> BuiltinOutput {
+        BuiltinOutput {
+            _status: 0,
+            std_out: "".to_string(),
+            std_err: "".to_string(),
+        }
+    }
+
     pub fn run(&self, cmd: Cmd, is_last: bool) -> Option<PipeReader> {
         let output = match self {
-            Builtin::Cd => Builtin::run_cd(&cmd.args),
-            Builtin::Echo => Builtin::run_echo(&cmd.args),
+            Builtin::Cd => Self::run_cd(&cmd.args),
+            Builtin::Echo => Self::run_echo(&cmd.args),
             Builtin::Exit => process::exit(0),
-            Builtin::Pwd => Builtin::run_pwd(),
-            Builtin::Type => Builtin::run_type(&cmd.args),
+            Builtin::History => Self::run_history(),
+            Builtin::Pwd => Self::run_pwd(),
+            Builtin::Type => Self::run_type(&cmd.args),
         };
         if !output.std_err.is_empty() {
             if let Some(mut file) = cmd.stderr_file {
