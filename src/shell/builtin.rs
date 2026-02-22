@@ -1,7 +1,8 @@
 use std::{
     env::{current_dir, home_dir, set_current_dir},
     fmt::Display,
-    io::{self, PipeReader, Write},
+    fs::OpenOptions,
+    io::{self, BufRead, BufReader, PipeReader, Write},
     path::Path,
     process,
     str::FromStr,
@@ -9,7 +10,7 @@ use std::{
 
 use crate::shell::{check_is_excutable, command::Cmd};
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct BuiltinOutput {
     pub _status: u8,
     pub std_out: String,
@@ -114,11 +115,7 @@ impl Builtin {
             args[0].to_string()
         };
         match set_current_dir(Path::new(&path_string)) {
-            Ok(_) => BuiltinOutput {
-                _status: 0,
-                std_out: "".to_string(),
-                std_err: "".to_string(),
-            },
+            Ok(_) => BuiltinOutput::default(),
             Err(_) => BuiltinOutput {
                 _status: 1,
                 std_out: "".to_string(),
@@ -128,16 +125,36 @@ impl Builtin {
     }
 
     fn run_history(args: &[String], history: &mut Vec<String>) -> BuiltinOutput {
-        let limit: usize = if args.is_empty() {
-            history.len()
-        } else {
-            args[0].parse().unwrap_or(history.len())
-        };
-        let skip = if limit >= history.len() {
-            0
-        } else {
-            history.len() - limit
-        };
+        let mut skip = 0;
+        if args.len() >= 1 {
+            if let Ok(limit) = args[0].parse::<usize>() {
+                skip = history.len() - limit.min(history.len());
+            } else if args.len() >= 2 {
+                if args[0] == "-r" {
+                    let file = OpenOptions::new()
+                        .read(true)
+                        .open(&args[1])
+                        .expect("Cannot open history file");
+                    let reader = BufReader::new(file);
+                    reader.lines().filter_map(Result::ok).for_each(|line| {
+                        if !line.is_empty() {
+                            history.push(line);
+                        }
+                    });
+                    return BuiltinOutput::default();
+                } else if args[0] == "-w" {
+                    let mut file = OpenOptions::new()
+                        .create(true)
+                        .write(true)
+                        .open(&args[1])
+                        .expect("Cannot open history file");
+                    for line in history.iter() {
+                        writeln!(file, "{}", line).expect("Cannot write to history");
+                    }
+                    return BuiltinOutput::default();
+                }
+            }
+        }
         let mut stdout = String::new();
         history.iter().enumerate().skip(skip).for_each(|(i, cmd)| {
             if i + 1 == history.len() {
