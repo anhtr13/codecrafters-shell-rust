@@ -16,7 +16,6 @@ impl Cmd {
     pub fn run(
         self,
         stdin: Option<PipeReader>,
-        history: &mut Vec<String>,
         is_last: bool,
     ) -> Option<PipeReader> {
         let stdin = if let Some(stdio) = stdin {
@@ -54,8 +53,6 @@ impl Cmd {
         if is_last {
             let _ = child.wait();
         }
-
-        history.push(format!("{} {}", self.name, self.args.join(" ")));
 
         output
     }

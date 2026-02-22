@@ -23,6 +23,8 @@ fn main() -> Result<()> {
                 let total_cmds = cmds.len();
 
                 for (idx, cmd) in cmds.into_iter().enumerate() {
+                    history.push(format!("{} {}", cmd.name, cmd.args.join(" ")));
+
                     let is_last = idx + 1 == total_cmds;
 
                     if let Ok(builtin) = Builtin::from_str(&cmd.name) {
@@ -32,7 +34,7 @@ fn main() -> Result<()> {
                             eprintln!("{e}");
                             break;
                         }
-                        cmd_io = cmd.run(cmd_io, &mut history, is_last);
+                        cmd_io = cmd.run(cmd_io, is_last);
                     }
                 }
             }
