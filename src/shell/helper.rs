@@ -15,8 +15,16 @@ impl InputHelper {
         InputHelper
     }
 
-    fn get_candidates(word: &str) -> Vec<String> {
+    fn get_candidates(prefix: &str) -> Vec<String> {
         let mut res = HashSet::new();
+
+        let builtins = ["echo", "exit", "cd", "pwd", "type", "history"];
+        builtins.into_iter().for_each(|cmd| {
+            if cmd.starts_with(prefix) {
+                res.insert(cmd.to_string());
+            }
+        });
+
         if let Some(path) = std::env::var_os("PATH") {
             std::env::split_paths(&path)
                 .map(|dir| read_dir(&dir))
@@ -30,13 +38,14 @@ impl InputHelper {
                             && let Ok(metadata) = metadata(&entry_path)
                             && let mode = metadata.permissions().mode()
                             && (mode & 0o100 != 0 || mode & 0o010 != 0 || mode & 0o001 != 0)
-                            && name.starts_with(word)
+                            && name.starts_with(prefix)
                         {
                             res.insert(name.to_string());
                         }
                     });
                 });
         }
+
         res.into_iter().collect()
     }
 }
@@ -53,19 +62,15 @@ impl Completer for InputHelper {
         let prefix = line;
 
         if pos == line.len() {
-            match prefix {
-                "ech" => return Ok((0, vec![String::from("echo ")])),
-                "exi" => return Ok((0, vec![String::from("exit ")])),
-                word => {
-                    let mut candidates = Self::get_candidates(word);
-                    if candidates.len() == 1 {
-                        candidates[0].push(' ');
-                    } else {
-                        candidates.sort_unstable();
-                    }
-                    return Ok((0, candidates));
-                }
+            let mut candidates = Self::get_candidates(prefix);
+
+            if candidates.len() == 1 {
+                candidates[0].push(' ');
+            } else {
+                candidates.sort_unstable();
             }
+
+            return Ok((0, candidates));
         }
         Ok((0, vec![String::from(line)]))
     }
