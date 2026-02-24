@@ -94,6 +94,19 @@ impl InputHelper {
             if !candidates[0].ends_with("/") {
                 candidates[0].push(' ');
             }
+        } else if candidates.len() >= 2 {
+            let mut lcp = candidates[0].clone();
+            for c in candidates.iter().skip(1) {
+                while !lcp.is_empty() && !c.starts_with(&lcp) {
+                    lcp.pop();
+                }
+                if lcp.is_empty() {
+                    break;
+                }
+            }
+            if !lcp.is_empty() && lcp != dir_prefix {
+                return vec![format!("{pre_arg}{lcp}")];
+            }
         }
         candidates
     }
