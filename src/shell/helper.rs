@@ -16,12 +16,12 @@ impl InputHelper {
     }
 
     fn get_cmd_candidates(prefix: &str) -> Vec<String> {
-        let mut res = HashSet::new();
+        let mut candidates = HashSet::new();
 
         let builtins = ["echo", "exit", "cd", "pwd", "type", "history"];
         builtins.into_iter().for_each(|cmd| {
             if cmd.starts_with(prefix) {
-                res.insert(cmd.to_string());
+                candidates.insert(cmd.to_string());
             }
         });
 
@@ -34,33 +34,65 @@ impl InputHelper {
                         let entry_path = entry.path();
                         if entry_path.is_file()
                             && let Some(name) = entry.file_name().to_str()
-                            && !res.contains(name)
+                            && !candidates.contains(name)
                             && let Ok(metadata) = metadata(&entry_path)
                             && let mode = metadata.permissions().mode()
                             && (mode & 0o100 != 0 || mode & 0o010 != 0 || mode & 0o001 != 0)
                             && name.starts_with(prefix)
                         {
-                            res.insert(name.to_string());
+                            candidates.insert(name.to_string());
                         }
                     });
                 });
         }
 
-        res.into_iter().collect()
+        let mut candidates: Vec<String> = candidates.into_iter().collect();
+        if candidates.len() == 1 {
+            candidates[0].push(' ');
+        }
+        candidates
     }
 
     fn get_directory_completions(cmd: &str, dir_prefix: &str) -> Vec<String> {
         let mut candidates = Vec::new();
+        let mut pre_arg = cmd.to_string();
         let paths: Vec<&str> = dir_prefix.split("/").collect();
         if paths.len() == 1 {
             let dir_prefix = paths[0];
+            pre_arg.push(' ');
             if let Ok(reader) = fs::read_dir(".") {
-                reader.filter_map(Result::ok).for_each(|dir| {
-                    let dir_name = dir.file_name().display().to_string();
+                reader.filter_map(Result::ok).for_each(|entry| {
+                    let dir_name = entry.file_name().display().to_string();
                     if dir_name.starts_with(dir_prefix) {
-                        candidates.push(format!("{cmd} {dir_name}"));
+                        if entry.path().is_dir() {
+                            candidates.push(format!("{dir_name}/"));
+                        } else {
+                            candidates.push(dir_name);
+                        }
                     }
                 });
+            }
+        } else if paths.len() >= 2 {
+            let dir_prefix = paths[paths.len() - 1];
+            let dir = paths[..paths.len() - 1].join("/");
+            pre_arg = format!("{pre_arg} {dir}/");
+            if let Ok(reader) = fs::read_dir(dir) {
+                reader.filter_map(Result::ok).for_each(|entry| {
+                    let dir_name = entry.file_name().display().to_string();
+                    if dir_name.starts_with(dir_prefix) {
+                        if entry.path().is_dir() {
+                            candidates.push(format!("{dir_name}/"));
+                        } else {
+                            candidates.push(dir_name);
+                        }
+                    }
+                });
+            }
+        }
+        if candidates.len() == 1 {
+            candidates[0] = format!("{pre_arg}{}", candidates[0]);
+            if !candidates[0].ends_with("/") {
+                candidates[0].push(' ');
             }
         }
         candidates
@@ -90,9 +122,8 @@ impl Completer for InputHelper {
                 candidates =
                     Self::get_directory_completions(&args[..args.len() - 1].join(" "), prefix);
             }
-            if candidates.len() == 1 {
-                candidates[0].push(' ');
-            } else {
+
+            if candidates.len() >= 2 {
                 candidates.sort_unstable();
             }
 
