@@ -108,15 +108,17 @@ impl Completer for InputHelper {
         pos: usize,
         _ctx: &rustyline::Context<'_>,
     ) -> rustyline::Result<(usize, Vec<Self::Candidate>)> {
-        let args: Vec<&str> = line.split_whitespace().collect();
+        let mut args: Vec<&str> = line.split_whitespace().collect();
         let mut candidates = Vec::new();
 
         if pos == line.len() {
+            if line.ends_with(" ") {
+                args.push("");
+            }
             if args.len() == 1 {
                 candidates = Self::get_cmd_candidates(args[0]);
             } else if args.len() >= 2
                 && let Some(prefix) = args.last()
-                && !prefix.is_empty()
                 && !prefix.starts_with("-")
             {
                 candidates =
