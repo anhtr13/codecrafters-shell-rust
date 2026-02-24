@@ -1,6 +1,6 @@
 use std::{
     collections::HashSet,
-    fs::{metadata, read_dir},
+    fs::{self, metadata, read_dir},
     os::unix::fs::PermissionsExt,
 };
 
@@ -15,7 +15,7 @@ impl InputHelper {
         InputHelper
     }
 
-    fn get_candidates(prefix: &str) -> Vec<String> {
+    fn get_cmd_candidates(prefix: &str) -> Vec<String> {
         let mut res = HashSet::new();
 
         let builtins = ["echo", "exit", "cd", "pwd", "type", "history"];
@@ -48,6 +48,23 @@ impl InputHelper {
 
         res.into_iter().collect()
     }
+
+    fn get_directory_completions(cmd: &str, dir_prefix: &str) -> Vec<String> {
+        let mut candidates = Vec::new();
+        let paths: Vec<&str> = dir_prefix.split("/").collect();
+        if paths.len() == 1 {
+            let dir_prefix = paths[0];
+            if let Ok(reader) = fs::read_dir(".") {
+                reader.filter_map(Result::ok).for_each(|dir| {
+                    let dir_name = dir.file_name().display().to_string();
+                    if dir_name.starts_with(dir_prefix) {
+                        candidates.push(format!("{cmd} {dir_name}"));
+                    }
+                });
+            }
+        }
+        candidates
+    }
 }
 
 impl Completer for InputHelper {
@@ -59,11 +76,20 @@ impl Completer for InputHelper {
         pos: usize,
         _ctx: &rustyline::Context<'_>,
     ) -> rustyline::Result<(usize, Vec<Self::Candidate>)> {
-        let prefix = line;
+        let args: Vec<&str> = line.split_whitespace().collect();
+        let mut candidates = Vec::new();
 
         if pos == line.len() {
-            let mut candidates = Self::get_candidates(prefix);
-
+            if args.len() == 1 {
+                candidates = Self::get_cmd_candidates(args[0]);
+            } else if args.len() >= 2
+                && let Some(prefix) = args.last()
+                && !prefix.is_empty()
+                && !prefix.starts_with("-")
+            {
+                candidates =
+                    Self::get_directory_completions(&args[..args.len() - 1].join(" "), prefix);
+            }
             if candidates.len() == 1 {
                 candidates[0].push(' ');
             } else {
@@ -72,6 +98,7 @@ impl Completer for InputHelper {
 
             return Ok((0, candidates));
         }
+
         Ok((0, vec![String::from(line)]))
     }
     // fn update(
