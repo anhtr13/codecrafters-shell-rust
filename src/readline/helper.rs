@@ -8,6 +8,8 @@ use std::{
 use anyhow::Result;
 use rustyline::{completion::Completer, highlight::Highlighter, hint::Hinter, validate::Validator};
 
+use crate::builtin::BUILTINS;
+
 pub struct Helper {
     pub completers: HashMap<String, String>,
 }
@@ -65,11 +67,7 @@ impl Helper {
         let (lhs, pattern) = line.rsplit_once(' ').unwrap_or(("", line));
         let mut candidates = HashSet::new();
 
-        let builtins = [
-            "echo", "exit", "cd", "pwd", "type", "history", "jobs", "complete", "declare",
-        ];
-
-        for cmd in builtins.into_iter() {
+        for cmd in BUILTINS.iter() {
             if cmd.starts_with(pattern) {
                 candidates.insert(cmd.to_string());
             }

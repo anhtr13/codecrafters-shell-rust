@@ -10,7 +10,7 @@ use crate::{
     builtin::{self, Builtin},
     command::find_excutable,
     job::Jobs,
-    parser::{self, args_expansion},
+    parser::{args_expansion, commands_from_input},
     readline::{helper::Helper, history::History},
 };
 
@@ -36,7 +36,7 @@ impl<'a> Shell<'a> {
     pub fn run(&mut self) -> anyhow::Result<()> {
         loop {
             let input = self.editor.readline("$ ")?;
-            let commands = match parser::commands_from_input(input) {
+            let commands = match commands_from_input(input) {
                 Ok(commands) => commands,
                 Err(e) => {
                     eprintln!("{e}");
@@ -67,7 +67,7 @@ impl<'a> Shell<'a> {
                         Builtin::Declare => builtin::declare(cmd.args, &mut self.variables),
                         Builtin::Jobs => {
                             has_job_builtin = true;
-                            builtin::jobs(self.jobs.value())
+                            builtin::jobs(self.jobs.get_ref())
                         }
                         Builtin::Complete => builtin::complete(
                             cmd.args,
@@ -101,9 +101,9 @@ impl<'a> Shell<'a> {
                 } else if find_excutable(&cmd.name).is_none() {
                     println!("{}: command not found", cmd.name);
                 } else if cmd.is_background_job {
-                    let job_number = self.jobs.new_job_number();
-                    let job = cmd.run_as_background_job(command_io, job_number)?;
-                    println!("[{}] {}", job.number, job.child.id());
+                    let job_id = self.jobs.new_id();
+                    let job = cmd.run_as_background_job(job_id, command_io)?;
+                    println!("[{}] {}", job.id, job.child.id());
                     self.jobs.push(job);
                     command_io = None;
                 } else {

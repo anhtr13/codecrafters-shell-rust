@@ -77,11 +77,7 @@ impl ShellCommand {
         Ok(output)
     }
 
-    pub fn run_as_background_job(
-        self,
-        stdin: Option<PipeReader>,
-        number: u32,
-    ) -> anyhow::Result<Job> {
+    pub fn run_as_background_job(self, id: u32, stdin: Option<PipeReader>) -> anyhow::Result<Job> {
         let stdin = if let Some(stdio) = stdin {
             Stdio::from(stdio)
         } else {
@@ -108,8 +104,8 @@ impl ShellCommand {
             .spawn()?;
 
         Ok(Job {
+            id,
             child,
-            number,
             command: format!("{} {}", self.name, self.args.join(" ")),
             status: JobStatus::Running,
         })

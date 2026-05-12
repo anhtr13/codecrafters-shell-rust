@@ -14,6 +14,10 @@ use crate::{
     readline::history::History,
 };
 
+pub static BUILTINS: [&str; 9] = [
+    "cd", "echo", "exit", "history", "pwd", "type", "jobs", "complete", "declare",
+];
+
 #[derive(Debug, PartialEq)]
 pub enum Builtin {
     Cd,
@@ -168,7 +172,7 @@ pub fn jobs(jobs: &[Job]) -> Result<String> {
         };
         output.push(format!(
             "[{}]{}  {}{}{}",
-            job.number, marker, job.status, space, job.command
+            job.id, marker, job.status, space, job.command
         ));
     }
     Ok(output.join("\n"))

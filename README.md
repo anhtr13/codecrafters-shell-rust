@@ -1,5 +1,7 @@
 # Xshell
 
+![progress_banner](https://backend.codecrafters.io/progress/shell/a9b9e13b-d7db-412e-9b27-234b1b2de6f6)
+
 An Unix-like shell implementation in Rust, built for the [Build Your Own Shell](https://app.codecrafters.io/courses/shell/overview) challenge on [Codecrafters](https://app.codecrafters.io).
 
 ## Build & Run

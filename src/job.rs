@@ -19,43 +19,43 @@ impl Display for JobStatus {
 
 #[derive(Debug)]
 pub struct Job {
+    pub id: u32, // number in the job queue
     pub child: Child,
-    pub number: u32, // number in the job queue
     pub command: String,
     pub status: JobStatus,
 }
 
 pub struct Jobs {
-    jobs: Vec<Job>,
-    number_pool: HashSet<u32>,
+    inner: Vec<Job>,
+    id_pool: HashSet<u32>,
 }
 
 impl Jobs {
     pub fn new() -> Self {
         Jobs {
-            jobs: Vec::new(),
-            number_pool: HashSet::new(),
+            inner: Vec::new(),
+            id_pool: HashSet::new(),
         }
     }
 
     pub fn push(&mut self, job: Job) {
-        self.number_pool.insert(job.number);
-        self.jobs.push(job);
+        self.id_pool.insert(job.id);
+        self.inner.push(job);
     }
 
-    pub fn new_job_number(&self) -> u32 {
+    pub fn new_id(&self) -> u32 {
         let mut num = 1;
-        while self.number_pool.contains(&num) {
+        while self.id_pool.contains(&num) {
             num += 1;
         }
         num
     }
 
     pub fn print_done(&mut self) {
-        for (i, job) in self.jobs.iter().enumerate() {
-            let marker = if i + 1 == self.jobs.len() {
+        for (i, job) in self.inner.iter().enumerate() {
+            let marker = if i + 1 == self.inner.len() {
                 "+"
-            } else if i + 2 == self.jobs.len() {
+            } else if i + 2 == self.inner.len() {
                 "-"
             } else {
                 " "
@@ -63,14 +63,14 @@ impl Jobs {
             if job.status == JobStatus::Done {
                 println!(
                     "[{}]{}  Done                    {}",
-                    job.number, marker, job.command
+                    job.id, marker, job.command
                 );
             }
         }
     }
 
     pub fn update_status(&mut self) {
-        for job in self.jobs.iter_mut() {
+        for job in self.inner.iter_mut() {
             match job.child.try_wait() {
                 Ok(status) => {
                     if status.is_some() {
@@ -86,15 +86,15 @@ impl Jobs {
     }
 
     pub fn clean_up(&mut self) {
-        for job in self.jobs.iter() {
+        for job in self.inner.iter() {
             if job.status == JobStatus::Done {
-                self.number_pool.remove(&job.number);
+                self.id_pool.remove(&job.id);
             }
         }
-        self.jobs.retain(|job| job.status == JobStatus::Running);
+        self.inner.retain(|job| job.status == JobStatus::Running);
     }
 
-    pub fn value(&self) -> &[Job] {
-        &self.jobs
+    pub fn get_ref(&self) -> &[Job] {
+        &self.inner
     }
 }
